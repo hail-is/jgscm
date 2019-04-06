@@ -520,21 +520,23 @@ class GoogleStorageContentManager(ContentsManager):
                 if throw:
                     raise
                 return None
-            except Forbidden:
-                if throw or not self.default_path:
-                    raise
-                return None
             cache[name] = bucket
             return bucket
 
-    @staticmethod
-    def _parse_path(path):
+    def _parse_path(self, path):
         """
         Splits the path into bucket name and path inside the bucket.
         :param path: string to split.
         :return: tuple(bucket name, bucket path).
         """
+        if self.default_path and self.default_path not in path:
+            if path[0] == "/":
+                path = f"{self.default_path}{path}"
+            else:
+                path = f"{self.default_path}/{path}"
+
         bucket, _, blobname = path.partition("/")
+
         return bucket, blobname
 
     @staticmethod
