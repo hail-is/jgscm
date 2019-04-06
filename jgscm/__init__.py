@@ -309,7 +309,6 @@ class GoogleStorageContentManager(ContentsManager):
 
     @debug_args
     def save(self, model, path):
-        print("model, path", model, path)
         if path.startswith("/"):
             path = path[1:]
         if "type" not in model:
@@ -317,7 +316,6 @@ class GoogleStorageContentManager(ContentsManager):
         if "content" not in model and model["type"] != "directory":
             raise web.HTTPError(400, u"No file content provided")
         if "/" not in path and self.default_path:
-            print("DEFAULT PATH", self.default_path)
             path = "%s/%s" % (self.default_path, path)
         bucket_name, bucket_path = self._parse_path(path)
         if bucket_path == "" and model["type"] != "directory":
@@ -520,6 +518,10 @@ class GoogleStorageContentManager(ContentsManager):
                     raise
             except (BadRequest, NotFound):
                 if throw:
+                    raise
+                return None
+            except Forbidden:
+                if throw or not self.default_path:
                     raise
                 return None
             cache[name] = bucket
@@ -824,9 +826,7 @@ class GoogleStorageContentManager(ContentsManager):
 
     def _save_directory(self, path, model):
         """Creates a directory in GCS."""
-        print("PATH IS", path)
         exists, obj = self._fetch(path)
-        print("exists", exists,)
         if exists:
             if isinstance(obj, Blob):
                 raise web.HTTPError(400, u"Not a directory: %s" % path)
@@ -834,10 +834,8 @@ class GoogleStorageContentManager(ContentsManager):
                 self.log.debug("Directory %r already exists", path)
                 return
         bucket_name, bucket_path = self._parse_path(path)
-        print("bucket_name, bucket_path", bucket_name, bucket_path)
         if bucket_path == "":
-            bucket_name = self.bucket
-
+            self.client.create_bucket(bucket_name)
         else:
             bucket = self._get_bucket(bucket_name, throw=True)
             bucket.blob(bucket_path).upload_from_string(
