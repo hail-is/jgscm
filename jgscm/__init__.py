@@ -536,7 +536,6 @@ class GoogleStorageContentManager(ContentsManager):
                 path = f"{self.default_path}/{path}"
 
         bucket, _, blobname = path.partition("/")
-
         return bucket, blobname
 
     @staticmethod
