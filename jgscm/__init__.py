@@ -460,7 +460,8 @@ class GoogleStorageContentManager(ContentsManager):
                                     model=model,
                                     contents_manager=self)
             except Exception:
-                self.log.error("Post-save hook failed on %s", os_path, exc_info=True)
+                self.log.error("Post-save hook failed on %s",
+                               os_path, exc_info=True)
 
     @default("checkpoints_class")
     def _checkpoints_class_default(self):
@@ -522,13 +523,15 @@ class GoogleStorageContentManager(ContentsManager):
             cache[name] = bucket
             return bucket
 
-    @staticmethod
-    def _parse_path(path):
+    def _parse_path(self, path):
         """
         Splits the path into bucket name and path inside the bucket.
         :param path: string to split.
         :return: tuple(bucket name, bucket path).
         """
+        if self.default_path and not path.startswith(f"{self.default_path}/"):
+            path = f"{self.default_path}/{path}"
+
         bucket, _, blobname = path.partition("/")
         return bucket, blobname
 
