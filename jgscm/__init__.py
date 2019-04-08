@@ -529,7 +529,7 @@ class GoogleStorageContentManager(ContentsManager):
         :param path: string to split.
         :return: tuple(bucket name, bucket path).
         """
-        if self.default_path and not path.startswith(self.default_path):
+        if self.default_path and not path.startswith(f"{self.default_path}/"):
             path = f"{self.default_path}/{path}"
 
         bucket, _, blobname = path.partition("/")
