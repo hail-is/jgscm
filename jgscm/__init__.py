@@ -497,7 +497,7 @@ class GoogleStorageContentManager(ContentsManager):
         """
         if not self.cache_buckets:
             try:
-                bucket_descriptor = self.client.bucket(name, user_project=self.project)
+                bucket_descriptor = self.client.bucket(name, user_project=self.client.project)
                 return self.client.get_bucket(bucket_descriptor)
             except NotFound:
                 if throw:
@@ -511,7 +511,7 @@ class GoogleStorageContentManager(ContentsManager):
             return cache[name]
         except KeyError:
             try:
-                bucket_descriptor = self.client.bucket(name, user_project=self.project)
+                bucket_descriptor = self.client.bucket(name, user_project=self.client.project)
                 bucket = self.client.get_bucket(bucket_descriptor)
             except BrokenPipeError as e:
                 if e.errno in (None, errno.EPIPE):
