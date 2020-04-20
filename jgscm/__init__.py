@@ -20,6 +20,8 @@ from tornado import web
 from tornado.escape import url_unescape
 from traitlets import Any, Bool, Int, Unicode, default
 
+from concurrent.futures import ThreadPoolExecutor, wait
+
 
 if sys.version_info[0] == 2:
     import socket
@@ -760,25 +762,28 @@ class GoogleStorageContentManager(ContentsManager):
         }
         if content:
             blobs, folders = members
-            model["content"] = contents = []
-            for blob in blobs:
-                if self._get_blob_path(blob) != path and \
-                        self.should_list(self._get_blob_name(blob)):
-                    contents.append(self.get(
-                        path=blob,
-                        content=False)
-                    )
             if path != "":
                 tmpl = "%s/%%s" % self._parse_path(path)[0]
             else:
                 tmpl = "%s"
             _, this = self._parse_path(path)
-            for folder in folders:
-                if self.should_list(folder) and folder != this:
-                    contents.append(self.get(
-                        path=tmpl % folder,
-                        content=False)
-                    )
+            with ThreadPoolExecutor(max_workers=32) as pool:
+                blob_futures = [
+                    pool.submit(self.get, path=blob, content=False)
+                    for blob in blobs
+                    if self._get_blob_path(blob) != path
+                    and self.should_list(self._get_blob_name(blob))]
+                folder_futures = [
+                    pool.submit(self.get, path=tmpl % folder, content=False)
+                    for folder in folders
+                    if self.should_list(folder) and folder != this]
+                content, failures = wait(blob_futures + folder_futures)
+                if failures:
+                    raise ValueError(
+                        f'retrieving directory contents failed: '
+                        f'{", ".join(failures)}'
+                    ) from failures[0]
+                model["content"] = content
             model["format"] = "json"
 
         return model
