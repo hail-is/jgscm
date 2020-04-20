@@ -215,7 +215,6 @@ class GoogleStorageContentManager(ContentsManager):
         # Stub for the GSClient instance (set lazily by the client property).
         self._client = None
         super(GoogleStorageContentManager, self).__init__(*args, **kwargs)
-        self.log.debug('using dk jgscm')
 
     def debug_args(fn):
         def wrapped_fn(self, *args, **kwargs):
