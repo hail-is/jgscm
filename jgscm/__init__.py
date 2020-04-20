@@ -768,7 +768,7 @@ class GoogleStorageContentManager(ContentsManager):
             else:
                 tmpl = "%s"
             _, this = self._parse_path(path)
-            with ThreadPoolExecutor(max_workers=32) as pool:
+            with ThreadPoolExecutor(max_workers=64) as pool:
                 blob_futures = [
                     pool.submit(self.get, path=blob, content=False)
                     for blob in blobs
