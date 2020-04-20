@@ -615,9 +615,11 @@ class GoogleStorageContentManager(ContentsManager):
                 if exists and not content:
                     return True, None
             # blob may not exist but at the same time be a part of a path
+            delimiter = '/' if content else None  # https://github.com/hail-is/hail/issues/8586
             max_list_size = self.max_list_size if content else 1
             try:
-                it = bucket.list_blobs(prefix=bucket_path, delimiter="/",
+                it = bucket.list_blobs(prefix=bucket_path,
+                                       delimiter=delimiter,
                                        max_results=max_list_size)
                 try:
                     files = list(islice(it, max_list_size))
