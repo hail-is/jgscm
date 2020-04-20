@@ -777,6 +777,8 @@ class GoogleStorageContentManager(ContentsManager):
                     pool.submit(self.get, path=tmpl % folder, content=False)
                     for folder in folders
                     if self.should_list(folder) and folder != this]
+                print(f'running {len(blob_futures) + len(folder_futures)}'
+                      f' 32-parallel')
                 content, failures = wait(blob_futures + folder_futures)
                 if failures:
                     raise ValueError(
