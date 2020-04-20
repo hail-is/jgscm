@@ -780,13 +780,9 @@ class GoogleStorageContentManager(ContentsManager):
                     if self.should_list(folder) and folder != this]
                 self.log.debug(f'running {len(blob_futures) + len(folder_futures)}'
                                f' 32-parallel')
-                content, failures = wait(blob_futures + folder_futures)
-                if failures:
-                    raise ValueError(
-                        f'retrieving directory contents failed: '
-                        f'{", ".join(failures)}'
-                    ) from failures[0]
-                model["content"] = content
+                done, not_done = wait(blob_futures + folder_futures)
+                assert not not_done
+                model["content"] = [x.result() for x in done]
             model["format"] = "json"
 
         return model
