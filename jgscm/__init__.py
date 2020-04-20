@@ -215,6 +215,7 @@ class GoogleStorageContentManager(ContentsManager):
         # Stub for the GSClient instance (set lazily by the client property).
         self._client = None
         super(GoogleStorageContentManager, self).__init__(*args, **kwargs)
+        self.log.debug('using dk jgscm')
 
     def debug_args(fn):
         def wrapped_fn(self, *args, **kwargs):
@@ -777,8 +778,8 @@ class GoogleStorageContentManager(ContentsManager):
                     pool.submit(self.get, path=tmpl % folder, content=False)
                     for folder in folders
                     if self.should_list(folder) and folder != this]
-                print(f'running {len(blob_futures) + len(folder_futures)}'
-                      f' 32-parallel')
+                self.log.debug(f'running {len(blob_futures) + len(folder_futures)}'
+                               f' 32-parallel')
                 content, failures = wait(blob_futures + folder_futures)
                 if failures:
                     raise ValueError(
