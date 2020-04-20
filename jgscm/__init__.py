@@ -256,7 +256,9 @@ class GoogleStorageContentManager(ContentsManager):
         bucket = self._get_bucket(bucket_name)
         if bucket is None or bucket_path == "":
             return False
-        return bucket.blob(bucket_path).exists()
+        blob = bucket.blob(bucket_path)
+        return blob.exists() and not (
+            blob.name.endswith("/") and blob.size == 0)
 
     @debug_args
     def dir_exists(self, path):
