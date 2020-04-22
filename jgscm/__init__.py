@@ -20,6 +20,8 @@ from tornado import web
 from tornado.escape import url_unescape
 from traitlets import Any, Bool, Int, Unicode, default
 
+from concurrent.futures import ThreadPoolExecutor, wait
+
 
 if sys.version_info[0] == 2:
     import socket
@@ -256,7 +258,9 @@ class GoogleStorageContentManager(ContentsManager):
         bucket = self._get_bucket(bucket_name)
         if bucket is None or bucket_path == "":
             return False
-        return bucket.blob(bucket_path).exists()
+        blob = bucket.blob(bucket_path)
+        return blob.exists() and not (
+            blob.name.endswith("/") and blob.size == 0)
 
     @debug_args
     def dir_exists(self, path):
@@ -613,9 +617,11 @@ class GoogleStorageContentManager(ContentsManager):
                 if exists and not content:
                     return True, None
             # blob may not exist but at the same time be a part of a path
+            delimiter = '/' if content else None  # https://github.com/hail-is/hail/issues/8586
             max_list_size = self.max_list_size if content else 1
             try:
-                it = bucket.list_blobs(prefix=bucket_path, delimiter="/",
+                it = bucket.list_blobs(prefix=bucket_path,
+                                       delimiter=delimiter,
                                        max_results=max_list_size)
                 try:
                     files = list(islice(it, max_list_size))
@@ -756,25 +762,26 @@ class GoogleStorageContentManager(ContentsManager):
         }
         if content:
             blobs, folders = members
-            model["content"] = contents = []
-            for blob in blobs:
-                if self._get_blob_path(blob) != path and \
-                        self.should_list(self._get_blob_name(blob)):
-                    contents.append(self.get(
-                        path=blob,
-                        content=False)
-                    )
             if path != "":
                 tmpl = "%s/%%s" % self._parse_path(path)[0]
             else:
                 tmpl = "%s"
             _, this = self._parse_path(path)
-            for folder in folders:
-                if self.should_list(folder) and folder != this:
-                    contents.append(self.get(
-                        path=tmpl % folder,
-                        content=False)
-                    )
+            with ThreadPoolExecutor(max_workers=64) as pool:
+                blob_futures = [
+                    pool.submit(self.get, path=blob, content=False)
+                    for blob in blobs
+                    if self._get_blob_path(blob) != path
+                    and self.should_list(self._get_blob_name(blob))]
+                folder_futures = [
+                    pool.submit(self.get, path=tmpl % folder, content=False)
+                    for folder in folders
+                    if self.should_list(folder) and folder != this]
+                self.log.debug(f'running {len(blob_futures) + len(folder_futures)}'
+                               f' 32-parallel')
+                done, not_done = wait(blob_futures + folder_futures)
+                assert not not_done
+                model["content"] = [x.result() for x in done]
             model["format"] = "json"
 
         return model
